@@ -1,0 +1,40 @@
+[package]
+name = "wgpu-intro"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <you@example.com>"]
+description = "A sample project with wasm-pack"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/yourgithubusername/hello-wasm"
+
+[lib]
+path = "src/lib.rs"
+harness = false
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "wgpu-intro"
+path = "src/main.rs"
+test = false
+
+[profile.release]
+lto = true
+panic = "abort"
+
+[dependencies]
+winit = "0.29.0"
+wgpu = { git = "https://github.com/bowber/wgpu", branch = "v22"}
+env_logger = "0.11"
+log = "0.4"
+pollster = "0.3"
+
+# wasm32 dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1"
+js-sys = "0.3.69"
+wasm-bindgen = "0.2.93"
+wasm-bindgen-futures = "0.4.43"
+wasm-bindgen-test = "0.3"
+web-sys = "0.3.69"
+web-time = "0.2.4"
