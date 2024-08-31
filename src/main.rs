@@ -1,4 +1,4 @@
 mod game;
 pub fn main() {
-    // game::start_game()
+    game::start_game()
 }

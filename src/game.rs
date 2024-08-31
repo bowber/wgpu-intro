@@ -77,11 +77,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         }),
         primitive: wgpu::PrimitiveState::default(),
         depth_stencil: None,
-        multisample: wgpu::MultisampleState {
-            count: 4,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
-        },
+        multisample: wgpu::MultisampleState::default(), //TODO: Enable multisampling
         multiview: None,
         cache: None,
     });
@@ -130,8 +126,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                     label: None,
                                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                                         view: &view,
-                                        // Resolve target is used for multisampling. Cannot be None
-                                        resolve_target: wgpu::TextureView::new(&view),
+                                        // Resolve target is used for multisampling.
+                                        resolve_target: None,
                                         ops: wgpu::Operations {
                                             load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
                                             store: wgpu::StoreOp::Store,
