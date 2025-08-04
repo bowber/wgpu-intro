@@ -22,13 +22,31 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     
     // Progressive adapter fallback to maximize compatibility across different browsers and environments:
     // 1. WebGPU with surface compatibility (preferred, best performance)
-    // 2. WebGL with surface compatibility (fallback for WebGPU-incompatible systems)
+    // 2. WebGL with surface compatibility (fallback for WebGPU-incompatible systems) 
     // 3. WebGL without surface requirements (final fallback for restricted environments)
+    // 4. WebGL with low power preference (for power-constrained devices)
     let adapter = {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen::JsCast;
+            
+            // Check basic WebGL support before attempting adapters
+            let window = web_sys::window().unwrap();
+            let document = window.document().unwrap();
+            let canvas = document.create_element("canvas").unwrap();
+            let test_canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+            
+            if test_canvas.get_context("webgl").is_err() && test_canvas.get_context("webgl2").is_err() {
+                console::log_1(&"❌ Browser does not support WebGL. Please enable WebGL in your browser settings or try a different browser.".into());
+                panic!("Browser does not support WebGL. Please enable WebGL in your browser settings or update your browser.");
+            }
+            console::log_1(&"✅ WebGL support detected, attempting adapter selection...".into());
+        }
+        
         // 1. Try WebGPU with surface compatibility
         let webgpu_adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
@@ -36,18 +54,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             
         if let Some(adapter) = webgpu_adapter {
             #[cfg(target_arch = "wasm32")]
-            console::log_1(&"Using WebGPU adapter with surface compatibility".into());
+            console::log_1(&"✅ Using WebGPU adapter with surface compatibility".into());
             log::info!("Using WebGPU adapter with surface compatibility");
             adapter
         } else {
             #[cfg(target_arch = "wasm32")]
-            console::log_1(&"WebGPU with surface compatibility not available, trying WebGL...".into());
+            console::log_1(&"⚠️ WebGPU with surface compatibility not available, trying WebGL...".into());
             log::warn!("WebGPU with surface compatibility not available, trying WebGL...");
             
-            // 2. Try WebGL fallback with surface compatibility
+            // 2. Try WebGL fallback with surface compatibility (high performance)
             let webgl_adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::default(),
+                    power_preference: wgpu::PowerPreference::HighPerformance,
                     force_fallback_adapter: true,
                     compatible_surface: Some(&surface),
                 })
@@ -55,18 +73,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 
             if let Some(adapter) = webgl_adapter {
                 #[cfg(target_arch = "wasm32")]
-                console::log_1(&"Using WebGL adapter with surface compatibility".into());
-                log::info!("Using WebGL adapter with surface compatibility");
+                console::log_1(&"✅ Using WebGL adapter with surface compatibility (high performance)".into());
+                log::info!("Using WebGL adapter with surface compatibility (high performance)");
                 adapter
             } else {
                 #[cfg(target_arch = "wasm32")]
-                console::log_1(&"WebGL with surface compatibility not available, trying without surface...".into());
+                console::log_1(&"⚠️ WebGL with surface compatibility not available, trying without surface...".into());
                 log::warn!("WebGL with surface compatibility not available, trying without surface...");
                 
-                // 3. Try WebGL fallback without surface requirement
+                // 3. Try WebGL fallback without surface requirement (high performance)
                 let webgl_no_surface = instance
                     .request_adapter(&wgpu::RequestAdapterOptions {
-                        power_preference: wgpu::PowerPreference::default(),
+                        power_preference: wgpu::PowerPreference::HighPerformance,
                         force_fallback_adapter: true,
                         compatible_surface: None,
                     })
@@ -74,13 +92,39 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     
                 if let Some(adapter) = webgl_no_surface {
                     #[cfg(target_arch = "wasm32")]
-                    console::log_1(&"Using WebGL adapter without surface compatibility".into());
-                    log::info!("Using WebGL adapter without surface compatibility");
+                    console::log_1(&"✅ Using WebGL adapter without surface compatibility (high performance)".into());
+                    log::info!("Using WebGL adapter without surface compatibility (high performance)");
                     adapter
                 } else {
                     #[cfg(target_arch = "wasm32")]
-                    console::log_1(&"No compatible adapters found. This browser may not support WebGL or WebGPU.".into());
-                    panic!("Failed to find any compatible adapter. Please ensure your browser supports WebGL or update to a browser with WebGPU support.")
+                    console::log_1(&"⚠️ High performance adapters not available, trying low power mode...".into());
+                    log::warn!("High performance adapters not available, trying low power mode...");
+                    
+                    // 4. Try WebGL with low power preference (final fallback)
+                    let webgl_low_power = instance
+                        .request_adapter(&wgpu::RequestAdapterOptions {
+                            power_preference: wgpu::PowerPreference::LowPower,
+                            force_fallback_adapter: true,
+                            compatible_surface: None,
+                        })
+                        .await;
+                        
+                    if let Some(adapter) = webgl_low_power {
+                        #[cfg(target_arch = "wasm32")]
+                        console::log_1(&"✅ Using WebGL adapter in low power mode".into());
+                        log::info!("Using WebGL adapter in low power mode");
+                        adapter
+                    } else {
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            console::log_1(&"❌ No compatible adapters found. Troubleshooting suggestions:".into());
+                            console::log_1(&"  • Visit https://get.webgl.org/ to test WebGL support".into());
+                            console::log_1(&"  • Enable hardware acceleration in browser settings".into());
+                            console::log_1(&"  • Try a different browser (Chrome, Firefox, Safari, Edge)".into());
+                            console::log_1(&"  • Update your graphics drivers".into());
+                        }
+                        panic!("Failed to find any compatible adapter. Please check WebGL support at https://get.webgl.org/ and ensure hardware acceleration is enabled.")
+                    }
                 }
             }
         }

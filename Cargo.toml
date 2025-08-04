@@ -41,3 +41,9 @@ wasm-bindgen-futures = "0.4.43"
 wasm-bindgen-test = "0.3"
 web-sys = "0.3.69"
 web-time = "0.2.4"
+
+# Test dependencies
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }
+thirtyfour = "0.32"
+serde_json = "1.0"
