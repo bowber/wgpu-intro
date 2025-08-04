@@ -1,8 +1,8 @@
-name: Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "*" ]
   workflow_dispatch:
 
 permissions:
@@ -32,15 +32,28 @@ jobs:
       - name: Build WASM
         run: wasm-pack build --target web --release
 
-      - name: Setup Pages
+      - name: Setup Pages (main/master only)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact (main/master only)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
+      - name: Upload build artifact (other branches)
+        if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-build-${{ github.ref_name }}
+          path: |
+            pkg/
+            index.html
+            README.md
+
   deploy:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
