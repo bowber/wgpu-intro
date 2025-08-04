@@ -19,15 +19,72 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let instance = wgpu::Instance::default();
 
     let surface = instance.create_surface(&window).unwrap();
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
-            force_fallback_adapter: false,
-            // Request an adapter which can render to our surface
-            compatible_surface: Some(&surface),
-        })
-        .await
-        .expect("Failed to find an appropriate adapter");
+    
+    // Progressive adapter fallback to maximize compatibility across different browsers and environments:
+    // 1. WebGPU with surface compatibility (preferred, best performance)
+    // 2. WebGL with surface compatibility (fallback for WebGPU-incompatible systems)
+    // 3. WebGL without surface requirements (final fallback for restricted environments)
+    let adapter = {
+        // 1. Try WebGPU with surface compatibility
+        let webgpu_adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
+            })
+            .await;
+            
+        if let Some(adapter) = webgpu_adapter {
+            #[cfg(target_arch = "wasm32")]
+            console::log_1(&"Using WebGPU adapter with surface compatibility".into());
+            log::info!("Using WebGPU adapter with surface compatibility");
+            adapter
+        } else {
+            #[cfg(target_arch = "wasm32")]
+            console::log_1(&"WebGPU with surface compatibility not available, trying WebGL...".into());
+            log::warn!("WebGPU with surface compatibility not available, trying WebGL...");
+            
+            // 2. Try WebGL fallback with surface compatibility
+            let webgl_adapter = instance
+                .request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(),
+                    force_fallback_adapter: true,
+                    compatible_surface: Some(&surface),
+                })
+                .await;
+                
+            if let Some(adapter) = webgl_adapter {
+                #[cfg(target_arch = "wasm32")]
+                console::log_1(&"Using WebGL adapter with surface compatibility".into());
+                log::info!("Using WebGL adapter with surface compatibility");
+                adapter
+            } else {
+                #[cfg(target_arch = "wasm32")]
+                console::log_1(&"WebGL with surface compatibility not available, trying without surface...".into());
+                log::warn!("WebGL with surface compatibility not available, trying without surface...");
+                
+                // 3. Try WebGL fallback without surface requirement
+                let webgl_no_surface = instance
+                    .request_adapter(&wgpu::RequestAdapterOptions {
+                        power_preference: wgpu::PowerPreference::default(),
+                        force_fallback_adapter: true,
+                        compatible_surface: None,
+                    })
+                    .await;
+                    
+                if let Some(adapter) = webgl_no_surface {
+                    #[cfg(target_arch = "wasm32")]
+                    console::log_1(&"Using WebGL adapter without surface compatibility".into());
+                    log::info!("Using WebGL adapter without surface compatibility");
+                    adapter
+                } else {
+                    #[cfg(target_arch = "wasm32")]
+                    console::log_1(&"No compatible adapters found. This browser may not support WebGL or WebGPU.".into());
+                    panic!("Failed to find any compatible adapter. Please ensure your browser supports WebGL or update to a browser with WebGPU support.")
+                }
+            }
+        }
+    };
 
     // Create the logical device and command queue
     let (device, queue) = adapter
