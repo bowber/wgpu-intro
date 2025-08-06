@@ -5,11 +5,13 @@ cargo run
 
 Build wasm
 ```bash
-wasm-pack build --target web // Make sure you have wasm-pack installed: cargo install wasm-pack
+# Make sure you have wasm-pack installed: cargo install wasm-pack
+wasm-pack build --target web 
 ```
 
 Run web
 ```bash
-serve . // Make sure you have serve installed: npm install -g serve
+# Make sure you have serve installed: npm install -g serve
+serve . 
 ```
 

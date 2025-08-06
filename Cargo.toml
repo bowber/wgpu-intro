@@ -23,10 +23,10 @@ panic = "abort"
 
 [dependencies]
 winit = "0.29.0"
-wgpu = { git = "https://github.com/bowber/wgpu", branch = "v22"}
 env_logger = "0.11"
 log = "0.4"
 pollster = "0.3"
+wgpu = "26.0.1"
 
 # wasm32 dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
